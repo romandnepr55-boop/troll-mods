@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
+    <title>Troll Mods | Скрипты Roblox | Защита от DDoS</title>
+
+    <!-- Защита от XSS и фреймов -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://t.me https://cdnjs.cloudflare.com; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; img-src 'self' data:; frame-ancestors 'none';">
+    <meta http-equiv="X-Frame-Options" content="DENY">
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <meta http-equiv="Referrer-Policy" content="no-referrer">
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        :root {
+            --bg: #030408;
+            --card-bg: rgba(15, 18, 28, 0.9);
+            --border: rgba(255, 255, 255, 0.06);
+            --text: #e8ecf1;
+            --muted: #8b92a5;
+            --accent: #b300ff;
+            --green: #10b981;
+            --tg-blue: #2aabee;
+            --red: #ef4444;
+            --gold: #f59e0b;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
+        body {
+            font-family: 'Segoe UI', 'Roboto', system-ui, -apple-system, sans-serif;
+            background: var(--bg); color: var(--text);
+            min-height: 100vh; overflow-x: hidden; position: relative; line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* ЗАЩИТА: затемнение при DDoS */
+        .ddos-overlay {
+            display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 9999;
+            align-items: center; justify-content: center; flex-direction: column; gap: 2rem;
+        }
+        .ddos-overlay.active { display: flex; }
+        .ddos-overlay .shield-icon { font-size: 5rem; color: var(--green); animation: shieldPulse 1s ease-in-out infinite; }
+        @keyframes shieldPulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.2); } }
+        .ddos-overlay h2 { color: white; font-size: 2rem; text-align: center; }
+        .ddos-overlay p { color: var(--muted); text-align: center; max-width: 400px; }
+
+        /* АНИМИРОВАННЫЙ ФОН */
+        .animated-bg {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -3;
+            background: radial-gradient(ellipse at 30% 40%, #140a24 0%, #030408 55%);
+            animation: bgPulse 8s ease-in-out infinite;
+        }
+        @keyframes bgPulse { 0%,100% { opacity: 1; } 50% { opacity: 0.9; } }
+        .animated-bg::after {
+            content: ''; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -2;
+            background: radial-gradient(ellipse at 70% 60%, #0a1a24 0%, transparent 50%);
+            animation: bgShift 10s ease-in-out infinite;
+        }
+        @keyframes bgShift { 0%,100% { transform: translate(0,0); } 50% { transform: translate(2%,2%); } }
+        .grid-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; opacity: 0.4;
+            background-image: linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+            background-size: 50px 50px; animation: gridMove 25s linear infinite;
+        }
+        @keyframes gridMove { 0% { transform: translate(0,0); } 100% { transform: translate(50px,50px); } }
+
+        .particles { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; }
+        .particle { position: absolute; background: rgba(180,0,255,0.2); border-radius: 50%; filter: blur(5px); animation: float linear infinite; }
+        @keyframes float { 0% { transform: translateY(110vh) scale(0); opacity: 0; } 10% { opacity: 1; } 90% { opacity: 0.6; } 100% { transform: translateY(-20vh) scale(1.6); opacity: 0; } }
+
+        .app { max-width: 1100px; margin: 0 auto; padding: 0 1.5rem 2rem; display: flex; flex-direction: column; min-height: 100vh; position: relative; z-index: 2; }
+
+        /* ШАПКА */
+        header { padding: 2.5rem 0 1rem; text-align: center; position: relative; }
+        .logo-main {
+            font-size: clamp(3rem, 9vw, 5rem); font-weight: 900; letter-spacing: 5px;
+            background: linear-gradient(135deg, #00f2fe, #b300ff, #ff006e);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+            filter: drop-shadow(0 0 40px rgba(179,0,255,0.7)); margin-bottom: 0.5rem; line-height: 1.1;
+            animation: logoGlow 3s ease-in-out infinite;
+        }
+        @keyframes logoGlow { 0%,100% { filter: drop-shadow(0 0 40px rgba(179,0,255,0.7)); } 50% { filter: drop-shadow(0 0 60px rgba(0,242,254,0.9)); } }
+        .tagline { color: var(--muted); font-size: 1.3rem; font-weight: 500; display: flex; align-items: center; justify-content: center; gap: 0.8rem; flex-wrap: wrap; letter-spacing: 1px; }
+
+        .protection-badge {
+            display: inline-flex; align-items: center; gap: 0.5rem;
+            background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.3);
+            padding: 0.5rem 1.5rem; border-radius: 30px; margin-top: 1rem;
+            font-size: 0.9rem; color: var(--green); font-weight: 600;
+        }
+
+        /* БЛОК ПРИВЕТСТВИЯ */
+        .welcome-section {
+            background: var(--card-bg); backdrop-filter: blur(25px); border: 1px solid var(--border);
+            border-radius: 3rem; padding: 2.5rem; margin: 2rem 0; text-align: center;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.6); position: relative; overflow: hidden;
+        }
+        .welcome-avatar { width: 90px; height: 90px; border-radius: 50%; margin: 0 auto 1.5rem; background: linear-gradient(135deg, #b300ff, #00f2fe); display: flex; align-items: center; justify-content: center; font-size: 2.5rem; color: white; box-shadow: 0 15px 30px rgba(179,0,255,0.5); }
+        .welcome-section h2 { font-size: 2rem; font-weight: 800; margin-bottom: 1rem; }
+        .welcome-section h2 span { color: #00f2fe; }
+        .welcome-section .welcome-text { color: var(--muted); font-size: 1.1rem; line-height: 1.8; max-width: 700px; margin: 0 auto 1.5rem; }
+
+        /* НАВИГАЦИЯ */
+        nav {
+            display: flex; justify-content: center; flex-wrap: wrap; gap: 0.5rem; margin: 2rem 0 1.5rem;
+            background: rgba(15,18,30,0.8); backdrop-filter: blur(20px); padding: 0.6rem;
+            border-radius: 60px; border: 1px solid var(--border); position: sticky; top: 1rem; z-index: 10;
+        }
+        .nav-btn {
+            background: transparent; border: none; color: #cbd5e1; padding: 0.7rem 1.5rem;
+            border-radius: 40px; font-weight: 700; font-size: 0.95rem; cursor: pointer;
+            transition: 0.25s; display: flex; align-items: center; gap: 0.5rem; white-space: nowrap;
+        }
+        .nav-btn i { font-size: 1rem; }
+        .nav-btn:hover { background: rgba(255,255,255,0.08); color: white; }
+        .nav-btn.active { background: linear-gradient(135deg, #b300ff, #7d00cc); color: white; box-shadow: 0 8px 25px rgba(179,0,255,0.5); }
+
+        .page { display: none; }
+        .page.active { display: block; animation: pageIn 0.5s ease-out; }
+        @keyframes pageIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+        .section-title { font-size: 2rem; font-weight: 800; margin: 1.5rem 0; display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap; }
+        .section-title span { background: var(--accent); padding: 0.3rem 1.2rem; border-radius: 30px; font-size: 0.9rem; color: white; }
+
+        /* СЕТКИ */
+        .scripts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 2rem; margin-bottom: 2.5rem; }
+        .card {
+            background: var(--card-bg); backdrop-filter: blur(25px); border: 1px solid var(--border);
+            border-radius: 3rem; padding: 2.2rem; transition: all 0.4s ease;
+            box-shadow: 0 30px 50px rgba(0,0,0,0.8); display: flex; flex-direction: column; text-align: center;
+        }
+        .card:hover { transform: translateY(-10px); border-color: rgba(179,0,255,0.5); box-shadow: 0 35px 65px rgba(179,0,255,0.4); }
+
+        .script-photo {
+            width: 100%; aspect-ratio: 16/9; border-radius: 2rem; margin-bottom: 1.8rem;
+            position: relative; overflow: hidden; box-shadow: 0 20px 40px rgba(0,0,0,0.7);
+            display: flex; align-items: center; justify-content: center;
+        }
+        .script-photo.pickaxe { background: linear-gradient(145deg, #4a3520, #1f1a0e); border: 1px solid rgba(245,158,11,0.4); }
+        .script-photo.slime { background: linear-gradient(145deg, #1f4a35, #0e1f1a); border: 1px solid rgba(16,185,129,0.4); }
+        .script-photo i { font-size: 5.5rem; color: rgba(255,255,255,0.2); filter: drop-shadow(0 8px 12px rgba(0,0,0,0.8)); }
+        .script-photo .photo-badge { position: absolute; bottom: 15px; right: 15px; background: rgba(0,0,0,0.8); backdrop-filter: blur(10px); padding: 0.5rem 1.2rem; border-radius: 30px; font-size: 0.85rem; font-weight: 700; color: white; }
+
+        .card h2 { font-size: 1.9rem; margin-bottom: 0.8rem; font-weight: 800; }
+        .card .desc { color: var(--muted); font-size: 1.05rem; margin-bottom: 1.5rem; line-height: 1.7; }
+        .features-list { list-style: none; margin: 0 0 1.8rem; flex: 1; display: flex; flex-direction: column; gap: 0.6rem; text-align: left; }
+        .features-list li { display: flex; align-items: flex-start; gap: 0.7rem; font-size: 0.95rem; background: rgba(255,255,255,0.03); padding: 0.6rem 1rem; border-radius: 14px; border: 1px solid rgba(255,255,255,0.04); }
+        .features-list li i { color: var(--green); margin-top: 0.15rem; }
+
+        .btn-group { display: flex; gap: 0.8rem; flex-wrap: wrap; }
+        .btn {
+            display: inline-flex; align-items: center; justify-content: center; gap: 0.6rem;
+            padding: 0.9rem 1.6rem; border-radius: 50px; font-weight: 700; text-decoration: none;
+            transition: all 0.3s ease; border: none; cursor: pointer; font-size: 1rem; flex: 1;
+            white-space: nowrap; letter-spacing: 0.3px;
+        }
+        .btn-dl { background: linear-gradient(135deg, #10b981, #059669); color: white; }
+        .btn-dl:hover { box-shadow: 0 14px 35px rgba(16,185,129,0.6); transform: translateY(-3px); }
+        .btn-tg { background: linear-gradient(135deg, #0088cc, #2aabee); color: white; }
+        .btn-tg:hover { box-shadow: 0 14px 35px rgba(0,136,204,0.6); transform: translateY(-3px); }
+
+        .channels-section { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.8rem; margin: 2rem 0; }
+        .channel-card { background: var(--card-bg); backdrop-filter: blur(25px); border: 1px solid var(--border); border-radius: 2.5rem; padding: 2rem; text-align: center; transition: all 0.3s ease; box-shadow: 0 25px 40px rgba(0,0,0,0.7); }
+        .channel-card:hover { border-color: rgba(179,0,255,0.5); transform: translateY(-5px); }
+        .channel-card i { font-size: 2.8rem; margin-bottom: 1rem; }
+        .channel-card h4 { margin-bottom: 0.5rem; font-size: 1.3rem; }
+        .channel-card p { color: var(--muted); font-size: 0.95rem; margin-bottom: 1.3rem; }
+        .channel-card .btn { width: 100%; }
+
+        .disclaimer-box {
+            background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.25);
+            border-radius: 2rem; padding: 1.8rem; margin: 2.5rem 0; text-align: center; backdrop-filter: blur(15px);
+        }
+        .disclaimer-box i { font-size: 2.2rem; color: var(--red); margin-bottom: 0.8rem; }
+        .disclaimer-box h3 { color: var(--red); margin-bottom: 0.6rem; }
+        .disclaimer-box p { color: #fca5a5; font-size: 0.9rem; line-height: 1.7; }
+
+        footer { margin-top: auto; text-align: center; padding: 2.5rem 0 1rem; color: #5a6070; font-size: 0.85rem; border-top: 1px solid rgba(255,255,255,0.05); }
+
+        @media (max-width: 768px) {
+            .app { padding: 0 1rem 1.5rem; }
+            .scripts-grid { grid-template-columns: 1fr; }
+            .card { padding: 1.5rem; border-radius: 2.5rem; }
+            .logo-main { font-size: 2.5rem; }
+            nav { gap: 0.2rem; padding: 0.4rem; }
+            .nav-btn { padding: 0.5rem 0.9rem; font-size: 0.8rem; }
+            .btn-group { flex-direction: column; }
+            .channels-section { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <!-- ЗАЩИТА: DDoS оверлей -->
+    <div class="ddos-overlay" id="ddosShield">
+        <i class="fas fa-shield-haltered shield-icon"></i>
+        <h2>🛡️ Защита от DDoS активирована</h2>
+        <p>Сайт временно недоступен из-за высокой нагрузки. Пожалуйста, подождите несколько секунд...</p>
+    </div>
+
+    <div class="animated-bg"></div>
+    <div class="grid-overlay"></div>
+    <div class="particles" id="particles"></div>
+
+    <div class="app">
+        <header>
+            <div class="logo-main">TROLL MODS</div>
+            <div class="tagline">
+                <i class="fas fa-skull" style="color:#b300ff;"></i> СКРИПТЫ ROBLOX | ЗАЩИТА ОТ DDOS <i class="fas fa-skull" style="color:#b300ff;"></i>
+            </div>
+            <div class="protection-badge">
+                <i class="fas fa-shield-haltered"></i> Cloudflare Protection • Rate Limiting • SSL
+            </div>
+        </header>
+
+        <!-- БЛОК ПРИВЕТСТВИЯ -->
+        <div class="welcome-section">
+            <div class="welcome-avatar"><i class="fas fa-crown"></i></div>
+            <h2>Добро пожаловать на <span>Troll Mods</span>! 🔥</h2>
+            <p class="welcome-text">
+                <strong>Сайт защищён от DDoS-атак!</strong> Мы используем многоуровневую защиту: 
+                ограничение запросов, проверку браузера и шифрование трафика. 
+                Все скрипты доступны для скачивания. Приятного использования! 🎮
+            </p>
+        </div>
+
+        <!-- НАВИГАЦИЯ -->
+        <nav id="mainNav">
+            <button class="nav-btn active" data-page="home"><i class="fas fa-home"></i> Главная</button>
+            <button class="nav-btn" data-page="roblox"><i class="fas fa-code"></i> Скрипты</button>
+            <button class="nav-btn" data-page="channels"><i class="fab fa-telegram"></i> Каналы</button>
+        </nav>
+
+        <!-- ГЛАВНАЯ -->
+        <div class="page active" id="home">
+            <div class="section-title"><i class="fas fa-shield-haltered" style="color:#10b981;"></i> Статус защиты</div>
+            <div class="scripts-grid">
+                <div class="card">
+                    <i class="fas fa-lock" style="font-size:3rem; color:#10b981; margin:1rem 0;"></i>
+                    <h2>🛡️ Активная защита</h2>
+                    <p class="desc">Сайт работает через Cloudflare. Все запросы фильтруются.</p>
+                    <ul class="features-list">
+                        <li><i class="fas fa-check-circle"></i> DDoS Protection (Layer 3/4/7)</li>
+                        <li><i class="fas fa-check-circle"></i> Rate Limiting (100 запросов/мин)</li>
+                        <li><i class="fas fa-check-circle"></i> SSL/TLS шифрование</li>
+                        <li><i class="fas fa-check-circle"></i> XSS/CSRF защита</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <i class="fas fa-code" style="font-size:3rem; color:#f59e0b; margin:1rem 0;"></i>
+                    <h2>📌 Скрипты Roblox</h2>
+                    <p class="desc">2 эксклюзивных скрипта доступны для скачивания.</p>
+                    <ul class="features-list">
+                        <li><i class="fas fa-check-circle"></i> Pickaxe Tycoon SCRIPT</li>
+                        <li><i class="fas fa-check-circle"></i> Slime RNG SCRIPT</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- СКРИПТЫ -->
+        <div class="page" id="roblox">
+            <div class="section-title"><i class="fas fa-code" style="color:#f59e0b;"></i> Roblox скрипты <span>2 файла</span></div>
+            <div class="scripts-grid">
+                <div class="card">
+                    <div class="script-photo pickaxe"><i class="fas fa-hammer"></i><span class="photo-badge">TYCOON v1.0</span></div>
+                    <h2>📌 Pickaxe Tycoon</h2>
+                    <p class="desc">Полный автоматический фарм в Pickaxe Tycoon.</p>
+                    <ul class="features-list">
+                        <li><i class="fas fa-check-circle"></i> Auto Collect / Deposit / Cash</li>
+                        <li><i class="fas fa-check-circle"></i> Auto Per Second</li>
+                        <li><i class="fas fa-check-circle"></i> Auto Buy & Merge</li>
+                    </ul>
+                    <div class="btn-group">
+                        <a href="https://t.me/+UjKKU1CufYw5NGRk" target="_blank" rel="noopener noreferrer" class="btn btn-dl"><i class="fas fa-download"></i> Скачать LUA</a>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="script-photo slime"><i class="fas fa-flask"></i><span class="photo-badge">SLIME RNG v2.1</span></div>
+                    <h2>📌 Slime RNG</h2>
+                    <p class="desc">Мощный скрипт для Slime RNG с кучей функций.</p>
+                    <ul class="features-list">
+                        <li><i class="fas fa-check-circle"></i> Auto Roll / Rebirth / Equip</li>
+                        <li><i class="fas fa-check-circle"></i> Auto Buy Zone / Claim Index</li>
+                        <li><i class="fas fa-check-circle"></i> WalkSpeed / Anti AFK / Коды</li>
+                    </ul>
+                    <div class="btn-group">
+                        <a href="https://t.me/+UjKKU1CufYw5NGRk" target="_blank" rel="noopener noreferrer" class="btn btn-dl"><i class="fas fa-download"></i> Скачать LUA</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- КАНАЛЫ -->
+        <div class="page" id="channels">
+            <div class="section-title"><i class="fab fa-telegram" style="color:#0088cc;"></i> Где скачать?</div>
+            <div class="channels-section">
+                <div class="channel-card">
+                    <i class="fab fa-telegram-plane" style="color:#0088cc;"></i>
+                    <h4>📢 ОСНОВНОЙ КАНАЛ</h4>
+                    <p>Новости, анонсы, сливы</p>
+                    <a href="https://t.me/R3sms" target="_blank" rel="noopener noreferrer" class="btn btn-tg"><i class="fab fa-telegram"></i> @R3sms</a>
+                </div>
+                <div class="channel-card" style="border: 2px solid rgba(16,185,129,0.5);">
+                    <i class="fas fa-database" style="color:#10b981;"></i>
+                    <h4>💾 КАНАЛ С ЧИТАМИ</h4>
+                    <p>Файлы, скрипты, зеркала</p>
+                    <a href="https://t.me/+UjKKU1CufYw5NGRk" target="_blank" rel="noopener noreferrer" class="btn btn-dl"><i class="fab fa-telegram"></i> СКАЧАТЬ ТУТ</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- ДИСКЛЕЙМЕР -->
+        <div class="disclaimer-box">
+            <i class="fas fa-exclamation-triangle"></i>
+            <h3>⚠️ ОТКАЗ ОТ ОТВЕТСТВЕННОСТИ</h3>
+            <p><strong>Troll Mods</strong> — архив файлов из открытых источников. Мы не создаём и не модифицируем ПО. Все файлы предоставляются «как есть». Администрация не несёт ответственности за блокировки аккаунтов, повреждение устройств или любые другие последствия.</p>
+        </div>
+
+        <footer>
+            <p>© 2025 Troll Mods — Защищено Cloudflare | Все права защищены.</p>
+        </footer>
+    </div>
+
+    <script>
+        // ==================== ЗАЩИТА ОТ DDoS 
